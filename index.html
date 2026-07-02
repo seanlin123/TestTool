@@ -736,6 +736,16 @@
         let currentRow = null;
         let md = window.markdownit();
 
+        async function testSupabase() {
+            const { data, error } = await supabase
+                .from("test_cases")
+                .select("*");
+            console.log("====== Supabase 测试 ======");
+            console.log(data);
+            console.log(error);
+        }
+        testSupabase();
+
         const environments = ['Unity', 'UE4', 'UE5', 'Android', 'iOS', 'Web', '其它'];
         const templates = ['UI模板V2', '功能开发Prompt', '测试模板A', '重构模板B', '优化模板C'];
         const caseNames = ['登录UI', '注册页面', '用户设置', '数据看板', 'API测试', '性能优化', '代码重构', '单元测试', '集成测试', 'UI组件库'];
