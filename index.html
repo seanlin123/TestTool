@@ -821,6 +821,7 @@
                     const itemDate = new Date(item.updateTime);
                     return itemDate >= startDate && itemDate <= endDate;
                 });
+                console.log('日期范围筛选:', dateStart, '至', dateEnd, '找到数据:', data.length);
             }
 
             return data;
@@ -831,25 +832,25 @@
             const filteredData = getFilteredData();
             const specificDateValue = document.getElementById('query-specificDate').value;
 
-            // 如果没有选择日期，只显示最后一天的数据
-            let tableData = filteredData;
-            if (!specificDateValue && filteredData.length > 0) {
-                const lastDate = new Date(filteredData[0].updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                tableData = filteredData.filter(item => {
-                    const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                    return itemDate === lastDate;
-                });
-            }
+            // 统一日期格式：将 yyyy-MM-dd 转换为 yyyy/M/d
+            const normalizeDate = (dateStr) => {
+                if (!dateStr) return dateStr;
+                const parts = dateStr.split('-');
+                return `${parts[0]}/${parts[1]}/${parts[2]}`;
+            };
+
+            const normalizedDate = normalizeDate(specificDateValue);
 
             // 如果选择了特定日期，只显示该日期的数据
-            if (specificDateValue) {
+            let tableData = filteredData;
+            if (normalizedDate) {
                 tableData = filteredData.filter(item => {
                     const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                    return itemDate === specificDateValue;
+                    return itemDate === normalizedDate;
                 });
             }
 
-            console.log('表格筛选:', specificDateValue, '找到数据:', tableData.length);
+            console.log('表格筛选:', specificDateValue, '归一化后:', normalizedDate, '找到数据:', tableData.length);
 
             totalPages = Math.ceil(tableData.length / pageSize);
             currentPage = Math.min(currentPage, totalPages) || 1;
@@ -1019,21 +1020,21 @@
             const filteredData = getFilteredData();
             const specificDateValue = document.getElementById('query-specificDate').value;
 
-            // 如果没有选择日期，只显示最后一天的数据
-            let statsData = filteredData;
-            if (!specificDateValue && filteredData.length > 0) {
-                const lastDate = new Date(filteredData[0].updateTime).toLocaleDateString('zh-CN');
-                statsData = filteredData.filter(item => {
-                    const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN');
-                    return itemDate === lastDate;
-                });
-            }
+            // 统一日期格式：将 yyyy-MM-dd 转换为 yyyy/M/d
+            const normalizeDate = (dateStr) => {
+                if (!dateStr) return dateStr;
+                const parts = dateStr.split('-');
+                return `${parts[0]}/${parts[1]}/${parts[2]}`;
+            };
+
+            const normalizedDate = normalizeDate(specificDateValue);
 
             // 如果选择了特定日期，只显示该日期的数据
-            if (specificDateValue) {
+            let statsData = filteredData;
+            if (normalizedDate) {
                 statsData = filteredData.filter(item => {
-                    const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN');
-                    return itemDate === specificDateValue;
+                    const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                    return itemDate === normalizedDate;
                 });
             }
 
@@ -1152,7 +1153,7 @@
             const filteredData = getFilteredData();
             const specificDate = document.getElementById('query-specificDate').value;
 
-            // 统一日期格式：将 yyyy-MM-dd 转换为 yyyy/M/d
+            // 统一日期格式：将 yyyy-MM/dd 转换为 yyyy/M/d
             const normalizeDate = (dateStr) => {
                 if (!dateStr) return dateStr;
                 const parts = dateStr.split('-');
@@ -1162,7 +1163,6 @@
             const normalizedDate = normalizeDate(specificDate);
 
             // 如果选择了特定日期，只显示该日期的数据
-            // 如果没有选择日期，默认显示最后一天的数据
             let chartsData = filteredData;
             if (normalizedDate) {
                 chartsData = filteredData.filter(item => {
@@ -1170,39 +1170,26 @@
                     return itemDate === normalizedDate;
                 });
                 console.log('筛选日期:', specificDate, '归一化后:', normalizedDate, '找到数据:', chartsData.length);
-            } else {
-                // 默认显示最后一天的数据
-                if (filteredData.length > 0) {
-                    const lastDate = new Date(filteredData[0].updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                    chartsData = filteredData.filter(item => {
-                        const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                        return itemDate === lastDate;
-                    });
-                    console.log('默认日期:', lastDate, '找到数据:', chartsData.length);
-                }
             }
 
-            // Compile rate trend (show cumulative pass rate for selected date)
-            const compileRateData = chartsData.slice(0, 10).map((_, i) => {
-                const subset = chartsData.slice(0, i + 1);
-                const rate = subset.length > 0
-                    ? (subset.filter(d => d.compilePass).length / subset.length * 100).toFixed(1)
-                    : 0;
-                return rate;
+            // 如果选择了特定日期但没找到数据，保持空数组
+            if (chartsData.length === 0 && normalizedDate) {
+                console.log('没有找到日期:', specificDate, '的数据');
+            }
+
+            // Compile rate trend (show individual pass rate for each test case)
+            const compileRateData = chartsData.map(item => {
+                return item.compilePass ? 100 : 0;
             });
-            compileChart.data.labels = compileRateData.map((_, i) => `第${i + 1}个`);
+            compileChart.data.labels = compileRateData.map((_, i) => `测试${i + 1}`);
             compileChart.data.datasets[0].data = compileRateData;
             compileChart.update();
 
-            // MVP rate trend (show cumulative pass rate for selected date)
-            const mvpRateData = chartsData.slice(0, 10).map((_, i) => {
-                const subset = chartsData.slice(0, i + 1);
-                const rate = subset.length > 0
-                    ? (subset.filter(d => d.mvpPass).length / subset.length * 100).toFixed(1)
-                    : 0;
-                return rate;
+            // MVP rate trend (show individual pass rate for each test case)
+            const mvpRateData = chartsData.map(item => {
+                return item.mvpPass ? 100 : 0;
             });
-            mvpChart.data.labels = mvpRateData.map((_, i) => `第${i + 1}个`);
+            mvpChart.data.labels = mvpRateData.map((_, i) => `测试${i + 1}`);
             mvpChart.data.datasets[0].data = mvpRateData;
             mvpChart.update();
 
@@ -1212,21 +1199,16 @@
                 '不通过': 0
             };
 
-            // 如果选择了特定日期，只显示该日期的数据；否则显示最后一天的数据
+            // 如果选择了特定日期，只显示该日期的数据；否则显示所有数据
             let loopPassData = filteredData;
-            if (specificDate) {
+            if (normalizedDate) {
                 loopPassData = filteredData.filter(item => {
-                    const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN');
-                    return itemDate === specificDate;
-                });
-            } else if (filteredData.length > 0) {
-                // 默认显示最后一天的数据
-                const lastDate = new Date(filteredData[0].updateTime).toLocaleDateString('zh-CN');
-                loopPassData = filteredData.filter(item => {
-                    const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN');
-                    return itemDate === lastDate;
+                    const itemDate = new Date(item.updateTime).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                    return itemDate === normalizedDate;
                 });
             }
+
+            console.log('最小循环数据总数:', loopPassData.length, '通过:', loopPassCounts['通过'], '不通过:', loopPassCounts['不通过']);
 
             loopPassData.forEach(item => {
                 if (item.loopPass) {
@@ -1235,6 +1217,10 @@
                     loopPassCounts['不通过']++;
                 }
             });
+
+            console.log('最小循环通过统计 - 通过:', loopPassCounts['通过'], '不通过:', loopPassCounts['不通过']);
+            console.log('loopPassData中的数据:', loopPassData);
+
             loopChart.data.labels = Object.keys(loopPassCounts);
             loopChart.data.datasets[0].data = Object.values(loopPassCounts);
             loopChart.data.datasets[0].backgroundColor = ['#67c23a', '#f56c6c'];
